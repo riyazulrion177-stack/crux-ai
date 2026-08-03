@@ -1,0 +1,6 @@
+{
+  "name": "CRUX",
+  "description": "Life RPG Operating System - Transform real life into a solo leveling AAA game. Track discipline, level up stats, fight weekly bosses, and consult your Gemini AI Coach.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

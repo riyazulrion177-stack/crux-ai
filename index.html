@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+    <script>
+      // Prevent unhandled promise rejections caused by Vite HMR WebSocket closing in preview environment
+      window.addEventListener('unhandledrejection', function (event) {
+        if (
+          event.reason &&
+          (typeof event.reason === 'string' || event.reason.message) &&
+          (String(event.reason.message || event.reason).includes('vite') ||
+           String(event.reason.message || event.reason).includes('WebSocket') ||
+           String(event.reason.message || event.reason).includes('failed to connect'))
+        ) {
+          event.preventDefault();
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
