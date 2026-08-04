@@ -1,9 +1,12 @@
 import { UserProfile, Quest, QuestDifficulty, QuestPriority, ActivityLog, BossState, Achievement, RankType, HunterClass, SupabaseConfig, LootItem, AIConfig, Routine, Weekday } from '../types';
-import { INITIAL_QUEST_CATALOG, BOSS_CATALOG, INITIAL_BOSS, INITIAL_ACHIEVEMENTS } from './questCatalog';
+import { BOSS_CATALOG, INITIAL_BOSS, INITIAL_ACHIEVEMENTS } from './questCatalog';
 import { analyzeMissionName } from './aiMissionAnalyzer';
 import { ALL_RANKS, getRankRequirement, evaluateHighestEligibleRank, calculateRpForMission } from './rankService';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { goalService } from '../backend/services/GoalService';
+import { logger } from '../backend/core/logger';
+import { normalizeError } from '../backend/core/error';
 
 const STORAGE_KEY_USER = 'crux_user_profile_v1';
 const STORAGE_KEY_QUESTS = 'crux_quests_v1';
@@ -428,15 +431,17 @@ class StorageService {
     const bossKey = this.getUserKey(STORAGE_KEY_BOSS, userId);
     const achievementsKey = this.getUserKey(STORAGE_KEY_ACHIEVEMENTS, userId);
 
+    const emptyGoals: Quest[] = [];
+
     this.cache.set(userKey, newProfile);
-    this.cache.set(questsKey, INITIAL_QUEST_CATALOG);
+    this.cache.set(questsKey, emptyGoals);
     this.cache.set(logsKey, []);
     this.cache.set(bossKey, INITIAL_BOSS);
     this.cache.set(achievementsKey, INITIAL_ACHIEVEMENTS);
 
     setTimeout(() => {
       this.setItem(userKey, JSON.stringify(newProfile));
-      this.setItem(questsKey, JSON.stringify(INITIAL_QUEST_CATALOG));
+      this.setItem(questsKey, JSON.stringify(emptyGoals));
       this.setItem(logsKey, JSON.stringify([]));
       this.setItem(bossKey, JSON.stringify(INITIAL_BOSS));
       this.setItem(achievementsKey, JSON.stringify(INITIAL_ACHIEVEMENTS));
@@ -459,24 +464,45 @@ class StorageService {
   }
 
   public getQuests(userId?: string): Quest[] {
-    if (!userId) return INITIAL_QUEST_CATALOG;
+    if (!userId) return [];
     const key = this.getUserKey(STORAGE_KEY_QUESTS, userId);
     if (this.cache.has(key)) {
       return this.cache.get(key);
     }
     const raw = this.getItem(key);
     if (!raw) {
-      this.cache.set(key, INITIAL_QUEST_CATALOG);
-      setTimeout(() => this.setItem(key, JSON.stringify(INITIAL_QUEST_CATALOG)), 0);
-      return INITIAL_QUEST_CATALOG;
+      this.cache.set(key, []);
+      setTimeout(() => this.setItem(key, JSON.stringify([])), 0);
+      return [];
     }
     try {
       const parsed = JSON.parse(raw);
       this.cache.set(key, parsed);
       return parsed;
     } catch (e) {
-      this.cache.set(key, INITIAL_QUEST_CATALOG);
-      return INITIAL_QUEST_CATALOG;
+      this.cache.set(key, []);
+      return [];
+    }
+  }
+
+  public async loadQuestsFromSupabase(userId?: string): Promise<Quest[]> {
+    if (!userId) {
+      return this.getQuests(userId);
+    }
+
+    try {
+      const goals = await goalService.loadGoals(userId);
+      const key = this.getUserKey(STORAGE_KEY_QUESTS, userId);
+      this.cache.set(key, goals);
+      this.setItem(key, JSON.stringify(goals));
+      return goals;
+    } catch (error) {
+      const normalized = normalizeError(error, 'Goal sync load skipped.');
+      logger.warn('Supabase goal loading failed; falling back to local cache.', {
+        userId,
+        error: normalized.message,
+      });
+      return this.getQuests(userId);
     }
   }
 
@@ -485,6 +511,7 @@ class StorageService {
     const key = this.getUserKey(STORAGE_KEY_QUESTS, userId);
     this.cache.set(key, quests);
     setTimeout(() => this.setItem(key, JSON.stringify(quests)), 0);
+    void goalService.syncGoals(userId, quests);
   }
 
   public getActivityLogs(userId?: string): ActivityLog[] {
@@ -945,6 +972,7 @@ class StorageService {
       estimatedMinutes: questData.estimatedMinutes || 30,
       priority: questData.priority || 'medium',
       deadline: questData.deadline || '',
+      progress: Math.max(0, Math.min(100, Number(questData.progress ?? 0))),
       repeatRule: questData.repeatRule || 'daily',
       reminderTime: questData.reminderTime || '',
       notes: questData.notes || '',
@@ -977,6 +1005,7 @@ class StorageService {
       xpReward: rewards.xpReward,
       coinReward: rewards.coinReward,
       diamondReward: rewards.diamondReward,
+      progress: Math.max(0, Math.min(100, Number(questData.progress ?? current.progress ?? 0))),
     };
 
     quests[idx] = updated;
@@ -988,6 +1017,7 @@ class StorageService {
     const quests = this.getQuests(userId);
     const filtered = quests.filter(q => q.id !== questId);
     this.saveQuests(filtered, userId);
+    void goalService.deleteGoal(userId || '', questId);
   }
 
   public duplicateCustomQuest(questId: string, userId?: string): Quest {
@@ -1011,8 +1041,15 @@ class StorageService {
     if (!quest) throw new Error("Quest not found.");
 
     quest.isArchived = isArchived;
+    if (isArchived) {
+      quest.progress = Math.max(0, Math.min(100, Number(quest.progress ?? 0)));
+    }
     this.saveQuests(quests, userId);
     return quest;
+  }
+
+  public restoreCustomQuest(questId: string, userId?: string): Quest {
+    return this.archiveCustomQuest(questId, false, userId);
   }
 
   // Routines Storage Methods

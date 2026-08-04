@@ -136,6 +136,7 @@ export interface Quest {
   estimatedMinutes?: number;
   priority?: QuestPriority;
   deadline?: string;
+  progress?: number;
   repeatRule?: RepeatRule;
   reminderTime?: string;
   notes?: string;

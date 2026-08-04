@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Quest, 
   QuestCategory, 
+  QuestDifficulty,
   Attributes,
   Routine,
   Weekday
@@ -55,6 +56,7 @@ interface Props {
   onDeleteRoutine?: (id: string) => void;
   onToggleRoutineEnabled?: (id: string) => void;
   onDuplicateRoutine?: (id: string) => void;
+  onEditCustomQuest?: (questId: string, updatedData: Partial<Quest>) => void;
   onDeleteCustomQuest: (questId: string) => void;
   onDuplicateCustomQuest: (questId: string) => void;
   onArchiveCustomQuest: (questId: string, isArchived: boolean) => void;
@@ -109,6 +111,7 @@ export const QuestsView: React.FC<Props> = React.memo(({
   onDeleteRoutine,
   onToggleRoutineEnabled,
   onDuplicateRoutine,
+  onEditCustomQuest,
   onDeleteCustomQuest,
   onDuplicateCustomQuest,
   onArchiveCustomQuest,
@@ -138,6 +141,18 @@ export const QuestsView: React.FC<Props> = React.memo(({
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [routineTitle, setRoutineTitle] = useState<string>('');
   const [selectedDays, setSelectedDays] = useState<('daily' | 'weekdays' | 'weekends' | Weekday)[]>(['daily']);
+
+  // Goal editor modal state
+  const [showGoalEditor, setShowGoalEditor] = useState<boolean>(false);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [goalTitle, setGoalTitle] = useState<string>('');
+  const [goalDescription, setGoalDescription] = useState<string>('');
+  const [goalCategory, setGoalCategory] = useState<QuestCategory>('Custom');
+  const [goalDifficulty, setGoalDifficulty] = useState<QuestDifficulty>('medium');
+  const [goalMinutes, setGoalMinutes] = useState<number>(30);
+  const [goalPriority, setGoalPriority] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');
+  const [goalDeadline, setGoalDeadline] = useState<string>('');
+  const [goalProgress, setGoalProgress] = useState<number>(0);
 
   // Floating particles feedback
   const [floatingParticles, setFloatingParticles] = useState<{ id: number; x: number; y: number; text: string; isUndo?: boolean }[]>([]);
@@ -181,6 +196,46 @@ export const QuestsView: React.FC<Props> = React.memo(({
     setRoutineTitle(routine.title);
     setSelectedDays(routine.days);
     setShowRoutineModal(true);
+  };
+
+  const handleOpenGoalEditor = (quest: Quest) => {
+    setEditingGoalId(quest.id);
+    setGoalTitle(quest.title);
+    setGoalDescription(quest.description || '');
+    setGoalCategory(quest.category || 'Custom');
+    setGoalDifficulty(quest.difficulty || 'medium');
+    setGoalMinutes(quest.estimatedMinutes || 30);
+    setGoalPriority(quest.priority || 'medium');
+    setGoalDeadline(quest.deadline || '');
+    setGoalProgress(Math.max(0, Math.min(100, Number(quest.progress ?? 0))));
+    setShowGoalEditor(true);
+  };
+
+  const handleGoalEditorSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!goalTitle.trim() || !editingGoalId || !onEditCustomQuest) return;
+
+    onEditCustomQuest(editingGoalId, {
+      title: goalTitle.trim(),
+      description: goalDescription.trim(),
+      category: goalCategory,
+      difficulty: goalDifficulty,
+      estimatedMinutes: goalMinutes,
+      priority: goalPriority,
+      deadline: goalDeadline,
+      progress: goalProgress,
+    });
+
+    setShowGoalEditor(false);
+    setEditingGoalId(null);
+    setGoalTitle('');
+    setGoalDescription('');
+    setGoalCategory('Custom');
+    setGoalDifficulty('medium');
+    setGoalMinutes(30);
+    setGoalPriority('medium');
+    setGoalDeadline('');
+    setGoalProgress(0);
   };
 
   const toggleDaySelection = (dayId: 'daily' | 'weekdays' | 'weekends' | Weekday) => {
@@ -259,7 +314,7 @@ export const QuestsView: React.FC<Props> = React.memo(({
         return !q.isArchived && q.isCompleted;
       }
       if (statusFilter === 'history') {
-        return q.isCompleted;
+        return q.isArchived || q.isCompleted;
       }
       return !q.isArchived;
     });
@@ -624,11 +679,25 @@ export const QuestsView: React.FC<Props> = React.memo(({
                             ) : (
                               <>
                                 <button
+                                  onClick={() => handleOpenGoalEditor(quest)}
+                                  title="Edit Goal"
+                                  className="p-1.5 text-slate-400 hover:text-cyan-300 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
                                   onClick={() => onDuplicateCustomQuest(quest.id)}
                                   title="Duplicate Mission"
                                   className="p-1.5 text-slate-400 hover:text-indigo-300 rounded-lg hover:bg-slate-800 transition cursor-pointer"
                                 >
                                   <Copy className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => onArchiveCustomQuest(quest.id, !quest.isArchived)}
+                                  title={quest.isArchived ? 'Restore Goal' : 'Archive Goal'}
+                                  className="p-1.5 text-slate-400 hover:text-amber-300 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                                >
+                                  <Archive className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => onDeleteCustomQuest(quest.id)}
@@ -662,11 +731,36 @@ export const QuestsView: React.FC<Props> = React.memo(({
                             </span>
                           )}
 
+                          {quest.priority && (
+                            <span className="bg-slate-900 text-slate-300 border border-slate-800 px-2 py-0.5 rounded-full uppercase">
+                              {quest.priority}
+                            </span>
+                          )}
+
+                          {quest.deadline && (
+                            <span className="bg-slate-900 text-slate-300 border border-slate-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" /> {quest.deadline}
+                            </span>
+                          )}
+
                           {quest.estimatedMinutes && (
                             <span className="bg-slate-900 text-slate-300 border border-slate-800 px-2 py-0.5 rounded-full flex items-center gap-1">
                               <Clock className="w-3 h-3 text-slate-400" /> {quest.estimatedMinutes}m
                             </span>
                           )}
+                        </div>
+
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1.5">
+                            <span>PROGRESS</span>
+                            <span>{Math.max(0, Math.min(100, Number(quest.progress ?? 0)))}%</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-900 border border-slate-800 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 transition-all duration-300"
+                              style={{ width: `${Math.max(0, Math.min(100, Number(quest.progress ?? 0)))}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -847,6 +941,160 @@ export const QuestsView: React.FC<Props> = React.memo(({
           </div>
         </div>
       )}
+
+      {/* EDIT GOAL MODAL */}
+      <AnimatePresence>
+        {showGoalEditor && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-xl bg-[#0c0e20] border border-cyan-500/50 rounded-2xl p-6 shadow-2xl text-white relative"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGoalEditor(false);
+                  setEditingGoalId(null);
+                }}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mb-4">
+                <h2 className="text-lg font-black text-white tracking-wide flex items-center gap-2">
+                  <Target className="w-5 h-5 text-cyan-400" />
+                  EDIT GOAL
+                </h2>
+                <p className="text-xs text-slate-400 font-mono">
+                  Update the goal title, description, category, and timing while preserving the CRUX RPG loop.
+                </p>
+              </div>
+
+              <form onSubmit={handleGoalEditorSubmit} className="space-y-4 text-xs font-mono">
+                <div>
+                  <label className="block text-slate-300 uppercase font-bold mb-1.5">Goal Title *</label>
+                  <input
+                    type="text"
+                    required
+                    value={goalTitle}
+                    onChange={(e) => setGoalTitle(e.target.value)}
+                    className="w-full bg-[#12162a] border border-cyan-500/40 rounded-xl py-3 px-3.5 text-white placeholder-slate-500 outline-none focus:border-cyan-400 font-sans text-base transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 uppercase font-bold mb-1.5">Description</label>
+                  <textarea
+                    rows={3}
+                    value={goalDescription}
+                    onChange={(e) => setGoalDescription(e.target.value)}
+                    className="w-full bg-[#12162a] border border-cyan-500/40 rounded-xl py-3 px-3.5 text-white placeholder-slate-500 outline-none focus:border-cyan-400 font-sans text-base transition"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 uppercase font-bold mb-1.5">Category</label>
+                    <select
+                      value={goalCategory}
+                      onChange={(e) => setGoalCategory(e.target.value as QuestCategory)}
+                      className="w-full bg-[#12162a] border border-cyan-500/40 rounded-xl py-3 px-3.5 text-white outline-none focus:border-cyan-400"
+                    >
+                      {ALL_CATEGORIES.map((cat) => (
+                        <option key={`goal_cat_${cat.id}`} value={cat.id}>{cat.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 uppercase font-bold mb-1.5">Difficulty</label>
+                    <select
+                      value={goalDifficulty}
+                      onChange={(e) => setGoalDifficulty(e.target.value as QuestDifficulty)}
+                      className="w-full bg-[#12162a] border border-cyan-500/40 rounded-xl py-3 px-3.5 text-white outline-none focus:border-cyan-400"
+                    >
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                      <option value="extreme">Extreme</option>
+                      <option value="legendary">Legendary</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 uppercase font-bold mb-1.5">Priority</label>
+                    <select
+                      value={goalPriority}
+                      onChange={(e) => setGoalPriority(e.target.value as 'low' | 'medium' | 'high' | 'critical')}
+                      className="w-full bg-[#12162a] border border-cyan-500/40 rounded-xl py-3 px-3.5 text-white outline-none focus:border-cyan-400"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 uppercase font-bold mb-1.5">Progress %</label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={goalProgress}
+                      onChange={(e) => setGoalProgress(Number(e.target.value || 0))}
+                      className="w-full accent-cyan-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 uppercase font-bold mb-1.5">Estimated Minutes</label>
+                    <input
+                      type="number"
+                      min={5}
+                      max={240}
+                      value={goalMinutes}
+                      onChange={(e) => setGoalMinutes(Number(e.target.value || 30))}
+                      className="w-full bg-[#12162a] border border-cyan-500/40 rounded-xl py-3 px-3.5 text-white outline-none focus:border-cyan-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 uppercase font-bold mb-1.5">Deadline</label>
+                    <input
+                      type="date"
+                      value={goalDeadline}
+                      onChange={(e) => setGoalDeadline(e.target.value)}
+                      className="w-full bg-[#12162a] border border-cyan-500/40 rounded-xl py-3 px-3.5 text-white outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={!goalTitle.trim()}
+                    className={`w-full py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-wider transition cursor-pointer ${
+                      goalTitle.trim()
+                        ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 text-white shadow-lg shadow-cyan-600/30'
+                        : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                    }`}
+                  >
+                    SAVE GOAL CHANGES
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* CREATE / EDIT ROUTINE MODAL */}
       <AnimatePresence>

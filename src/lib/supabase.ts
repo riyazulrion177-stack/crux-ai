@@ -4,6 +4,7 @@ const STORAGE_KEY_SUPABASE_CONFIG = 'crux_supabase_config_v1';
 
 const DEFAULT_SUPABASE_URL = 'https://nbuigmslpwhcesnpljyr.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable__dodluJkkNkkI1NIgmG4GA_tfPXxuKH';
+const REMEMBER_ME_KEY = 'crux_remember_me_v1';
 
 const getCredentials = () => {
   const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
@@ -13,22 +14,14 @@ const getCredentials = () => {
     return { url: envUrl, anonKey: envKey };
   }
 
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_SUPABASE_CONFIG);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.url && parsed.anonKey) {
-        return { url: parsed.url, anonKey: parsed.anonKey };
-      }
-    }
-  } catch (e) {
-    // Ignore localStorage parsing errors
-  }
-
   return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
 };
 
 const { url, anonKey } = getCredentials();
+const shouldRememberSession = () => {
+  const stored = localStorage.getItem(REMEMBER_ME_KEY);
+  return stored !== 'false';
+};
 
 let clientInstance: SupabaseClient | null = null;
 
@@ -39,6 +32,7 @@ if (url && anonKey) {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        storage: shouldRememberSession() ? window.localStorage : window.sessionStorage,
       }
     });
   } catch (e) {

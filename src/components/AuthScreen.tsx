@@ -73,6 +73,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const isSubmittingRef = useRef<boolean>(false);
 
@@ -82,6 +83,32 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
   const [supabaseKeyInput, setSupabaseKeyInput] = useState(
     (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || ''
   );
+
+  const formatFriendlyAuthError = (message: string) => {
+    const normalized = (message || '').toLowerCase();
+
+    if (normalized.includes('invalid login credentials') || normalized.includes('invalid credentials')) {
+      return 'Invalid login credentials. Please check your email and password, or create a new account if you do not have one yet.';
+    }
+
+    if (normalized.includes('already exists') || normalized.includes('already registered')) {
+      return 'An account with this email already exists. Please sign in instead.';
+    }
+
+    if (normalized.includes('email not confirmed') || normalized.includes('confirm your email')) {
+      return 'Your email address still needs confirmation. Check your inbox for the verification email and try again.';
+    }
+
+    if (normalized.includes('jwt') || normalized.includes('expired') || normalized.includes('token')) {
+      return 'Your secure session has expired. Please sign in again to restore access.';
+    }
+
+    if (normalized.includes('network') || normalized.includes('failed to fetch')) {
+      return 'A network issue interrupted authentication. Please try again in a moment.';
+    }
+
+    return message || 'Authentication failed. Please try again.';
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +120,10 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
       setError('Please provide both email and password.');
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
 
     isSubmittingRef.current = true;
     setError('');
@@ -101,7 +132,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
 
     try {
       console.log('[AUTH_UI] Single click validated: Triggering authService.signIn');
-      const user = await authService.signIn(email.trim(), password);
+      const user = await authService.signIn(email.trim(), password, rememberMe);
 
       // Strict Session Verification against Supabase Auth Server before proceeding to Dashboard
       const sessionUser = await authService.getSessionUser();
@@ -112,7 +143,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
       onAuthSuccess(sessionUser, false);
     } catch (err: any) {
       console.error('[AUTH_SIGNIN_FAILED]', err);
-      setError(err.message || 'Invalid login credentials.');
+      setError(formatFriendlyAuthError(err.message || 'Authentication failed.'));
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;
@@ -129,7 +160,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
       setError('Please enter your Hunter designation name.');
       return;
     }
-    if (!email.trim() || !email.includes('@')) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError('Please enter a valid email address.');
       return;
     }
@@ -162,7 +193,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
         onAuthSuccess(sessionUser, true);
       }
     } catch (err: any) {
-      setError(err.message || 'Account registration failed.');
+      setError(formatFriendlyAuthError(err.message || 'Account registration failed.'));
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;
@@ -175,7 +206,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
     try {
       await authService.signInWithGoogle();
     } catch (err: any) {
-      setError(err.message || 'Google authentication required Supabase client connection.');
+      setError(formatFriendlyAuthError(err.message || 'Google authentication required Supabase client connection.'));
       setLoading(false);
     }
   };
@@ -192,7 +223,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
       await authService.resetPassword(email.trim());
       setSuccessMsg('Password reset instructions dispatched to ' + email.trim());
     } catch (err: any) {
-      setError(err.message || 'Unable to process password reset request.');
+      setError(formatFriendlyAuthError(err.message || 'Unable to process password reset request.'));
     } finally {
       setLoading(false);
     }
@@ -487,6 +518,16 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
                   />
                 </div>
               </div>
+
+              <label className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-cyan-500"
+                />
+                Remember me on this device
+              </label>
 
               {/* Sign In Button */}
               <button

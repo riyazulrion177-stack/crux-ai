@@ -52,6 +52,7 @@ export default function App() {
     return localStorage.getItem('crux_interface_sounds_enabled') === 'true';
   });
   const [isBooting, setIsBooting] = useState<boolean>(false);
+  const [isAuthTransitioning, setIsAuthTransitioning] = useState<boolean>(false);
 
   // Sync soundEnabled with audioService and localStorage
   useEffect(() => {
@@ -80,7 +81,8 @@ export default function App() {
       setUser(profile);
     }
 
-    setQuests(storageService.getQuests(activeAuth.id));
+    const syncedGoals = await storageService.loadQuestsFromSupabase(activeAuth.id);
+    setQuests(syncedGoals);
     setRoutines(storageService.getRoutines(activeAuth.id));
     setBoss(storageService.getBossState(activeAuth.id));
     setLogs(storageService.getActivityLogs(activeAuth.id));
@@ -130,47 +132,21 @@ export default function App() {
       if (!isMounted) return;
       console.log("Auth event:", event, session);
 
-      // Do NOT clear authUser or process null sessions until getSessionUser() has fully completed
-      if (!isInitCompleted) {
-        if (event === "INITIAL_SESSION") {
-          if (session?.user) {
-            const au: AuthUser = {
-              id: session.user.id,
-              email: session.user.email || '',
-              hunterName: session.user.user_metadata?.hunter_name || 'Hunter',
-              classTitle: session.user.user_metadata?.class_title || 'Cyber Scholar',
-              createdAt: session.user.created_at || new Date().toISOString()
-            };
-            handleLoadUserAccountRef.current(au, false, event);
-          }
-          return;
-        }
-        if (!session) {
-          // Never call setAuthUser(null) until getSessionUser() has fully completed.
-          return;
-        }
-      }
-
-      if (!session || event === "SIGNED_OUT") {
+      if (event === 'SIGNED_OUT' || !session) {
         setAuthUser(null);
         setUser(null);
         return;
       }
 
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || (event === "INITIAL_SESSION" && session)) {
-        if (session.user) {
-          const au: AuthUser = {
-            id: session.user.id,
-            email: session.user.email || '',
-            hunterName: session.user.user_metadata?.hunter_name || 'Hunter',
-            classTitle: session.user.user_metadata?.class_title || 'Cyber Scholar',
-            createdAt: session.user.created_at || new Date().toISOString()
-          };
-          handleLoadUserAccountRef.current(au, false, event);
-        } else if (isInitCompleted) {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        const verified = await authService.getSessionUser();
+        if (!verified) {
           setAuthUser(null);
           setUser(null);
+          return;
         }
+
+        await handleLoadUserAccountRef.current(verified, false, event);
       }
     });
 
@@ -183,19 +159,25 @@ export default function App() {
   }, []);
 
   const handleAuthSuccess = useCallback(async (authenticatedUser: AuthUser, isNew: boolean) => {
-    console.log("handleAuthSuccess() called", { authenticatedUser, isNew });
+    console.log('handleAuthSuccess() called', { authenticatedUser, isNew });
+    setIsAuthTransitioning(true);
+
     const sessionUser = await authService.getSessionUser();
     const activeUser = sessionUser || authenticatedUser;
     if (!activeUser || !activeUser.id) {
       console.error('[AUTH_GUARD] Refusing authentication: No verified Supabase session found.');
       setAuthUser(null);
       setUser(null);
+      setIsAuthTransitioning(false);
       return;
     }
+
     if (!isNew) {
       setIsBooting(true);
     }
-    handleLoadUserAccount(activeUser, isNew, "AUTH_SUCCESS");
+
+    await handleLoadUserAccount(activeUser, isNew, 'AUTH_SUCCESS');
+    setIsAuthTransitioning(false);
   }, [handleLoadUserAccount]);
 
   const handleLogout = useCallback(async () => {
@@ -315,8 +297,16 @@ export default function App() {
     setQuests(storageService.getQuests(authUser.id));
   }, [authUser]);
 
+  const handleEditCustomQuest = useCallback((questId: string, updatedData: Partial<Quest>) => {
+    if (!authUser) return;
+    storageService.updateCustomQuest(questId, updatedData, authUser.id);
+    setQuests(storageService.getQuests(authUser.id));
+  }, [authUser]);
+
   const handleDeleteCustomQuest = useCallback((questId: string) => {
     if (!authUser) return;
+    const confirmed = window.confirm('Delete this goal permanently? This action cannot be undone.');
+    if (!confirmed) return;
     storageService.deleteCustomQuest(questId, authUser.id);
     setQuests(storageService.getQuests(authUser.id));
   }, [authUser]);
@@ -427,12 +417,14 @@ export default function App() {
   const handleBootComplete = useCallback(() => setIsBooting(false), []);
 
   // Render loading screen during initial authentication check
-  if (authLoading) {
+  if (authLoading || isAuthTransitioning) {
     return (
       <div className="min-h-screen bg-[#03060c] text-white flex items-center justify-center p-4">
         <div className="text-center font-mono">
           <div className="w-10 h-10 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs text-cyan-400 tracking-widest uppercase">AUTHENTICATING HUNTER SESSION...</p>
+          <p className="text-xs text-cyan-400 tracking-widest uppercase">
+            {isAuthTransitioning ? 'SECURING HUNTER SESSION...' : 'AUTHENTICATING HUNTER SESSION...'}
+          </p>
         </div>
       </div>
     );
@@ -530,6 +522,7 @@ export default function App() {
             onDeleteRoutine={handleDeleteRoutine}
             onToggleRoutineEnabled={handleToggleRoutineEnabled}
             onDuplicateRoutine={handleDuplicateRoutine}
+            onEditCustomQuest={handleEditCustomQuest}
             onDeleteCustomQuest={handleDeleteCustomQuest}
             onDuplicateCustomQuest={handleDuplicateCustomQuest}
             onArchiveCustomQuest={handleArchiveCustomQuest}
