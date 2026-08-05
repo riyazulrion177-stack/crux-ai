@@ -237,47 +237,44 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#03060c] text-white flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Dynamic Cyber Ambient Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f293712_1px,transparent_1px),linear-gradient(to_bottom,#1f293712_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-cyan-600/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-[400px] h-[300px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-screen w-full bg-[linear-gradient(180deg,#04060b_0%,#060913_100%)] text-white flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:36px_36px] opacity-50" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] h-[320px] bg-cyan-500/8 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-8 right-8 w-[320px] h-[220px] bg-violet-500/8 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Main Container Card */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.98, y: 18 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-xl bg-[#080c18]/90 border border-cyan-500/30 rounded-2xl p-6 sm:p-8 shadow-[0_0_50px_rgba(0,240,255,0.08)] backdrop-blur-xl relative z-10 my-8"
+        transition={{ duration: 0.38, ease: 'easeOut' }}
+        className="w-full max-w-xl rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(6,10,18,0.96),rgba(5,8,15,0.9))] p-5 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.42)] backdrop-blur-xl relative z-10 my-8"
       >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4/5 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_20px_#00f0ff]" />
+        <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
 
-        {/* Top Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 text-xs font-mono uppercase tracking-widest mb-3 shadow-inner">
-            <Zap className="w-3.5 h-3.5 animate-pulse text-cyan-300" /> CRUX AUTHENTICATION SYSTEM
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-mono uppercase tracking-[0.32em] text-cyan-300 mb-3 shadow-[0_8px_18px_rgba(0,0,0,0.18)]">
+            <Zap className="w-3.5 h-3.5 text-cyan-300" /> CRUX AUTHENTICATION SYSTEM
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-black tracking-wider bg-gradient-to-r from-white via-cyan-100 to-purple-300 bg-clip-text text-transparent uppercase">
-            {mode === 'signup' && 'AWAKEN HUNTER ACCOUNT'}
-            {mode === 'signin' && 'HUNTER SYSTEM ACCESS'}
-            {mode === 'forgot' && 'RESET SECURITY CREDENTIALS'}
+          <h1 className="text-2xl sm:text-4xl font-black tracking-[-0.04em] text-white uppercase">
+            {mode === 'signup' && 'Awaken Hunter Account'}
+            {mode === 'signin' && 'Hunter System Access'}
+            {mode === 'forgot' && 'Reset Security Credentials'}
           </h1>
-          <p className="text-zinc-400 text-xs sm:text-sm mt-1 max-w-sm mx-auto">
+          <p className="mx-auto mt-2 max-w-sm text-xs sm:text-sm text-zinc-400">
             {mode === 'signup' && 'Create your account to claim your Level 1 status and begin your quest.'}
-            {mode === 'signin' && 'Enter your security keys to access your independent Hunter stats & progress.'}
+            {mode === 'signin' && 'Enter your credentials to access your live Hunter stats and progress.'}
             {mode === 'forgot' && 'Provide your registered email to receive a password reset key.'}
           </p>
         </div>
 
         {/* Mode Selector Tabs */}
-        <div className="flex bg-[#040711] p-1 rounded-xl border border-white/10 mb-6">
+        <div className="mb-6 flex rounded-2xl border border-white/10 bg-white/[0.03] p-1 shadow-[0_6px_18px_rgba(0,0,0,0.18)]">
           <button
             type="button"
             onClick={() => { setMode('signup'); setError(''); setSuccessMsg(''); }}
             className={`flex-1 py-2.5 rounded-lg text-xs font-mono uppercase font-bold transition duration-200 ${
               mode === 'signup'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20'
+                ? 'bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(14,116,144,0.38))] text-white border border-white/10'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -288,7 +285,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
             onClick={() => { setMode('signin'); setError(''); setSuccessMsg(''); }}
             className={`flex-1 py-2.5 rounded-lg text-xs font-mono uppercase font-bold transition duration-200 ${
               mode === 'signin'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20'
+                ? 'bg-[linear-gradient(135deg,rgba(34,211,238,0.22),rgba(14,116,144,0.38))] text-white border border-white/10'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
@@ -301,7 +298,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthSuccess }) => {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-5 p-3 rounded-xl bg-red-950/60 border border-red-500/40 text-red-300 text-xs font-mono flex flex-col gap-2"
+            className="mb-5 rounded-2xl border border-red-500/20 bg-red-950/25 p-3 text-xs text-red-300 shadow-[0_10px_24px_rgba(0,0,0,0.18)] flex flex-col gap-2"
           >
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />

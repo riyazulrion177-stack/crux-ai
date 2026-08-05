@@ -114,9 +114,8 @@ export const MobileBottomNav: React.FC<Props> = ({
     <>
       {/* FLOATING BOTTOM NAV BAR (MOBILE ONLY: <768px) */}
       <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden p-2 sm:p-3 pointer-events-none">
-        <div className="max-w-md mx-auto bg-[#090c17]/90 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.95),0_0_20px_rgba(6,182,212,0.2)] flex items-center justify-around pointer-events-auto relative overflow-hidden">
-          {/* Neon Top Glow Edge */}
-          <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-70" />
+        <div className="max-w-md mx-auto bg-[linear-gradient(180deg,rgba(8,11,20,0.96),rgba(9,10,18,0.86))] backdrop-blur-2xl border border-white/10 rounded-2xl p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.45)] flex items-center justify-around pointer-events-auto relative overflow-hidden">
+          <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-70" />
 
           {/* Primary Nav Buttons */}
           {primaryNavItems.map((item) => {
@@ -132,8 +131,8 @@ export const MobileBottomNav: React.FC<Props> = ({
                 >
                   <div className="relative">
                     <motion.div
-                      whileTap={{ scale: 0.9 }}
-                      className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-900 via-indigo-900 to-purple-800 border border-purple-400/60 flex items-center justify-center text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+                      whileTap={{ scale: 0.94 }}
+                      className="w-10 h-10 rounded-xl bg-[linear-gradient(135deg,rgba(91,33,182,0.42),rgba(17,24,39,0.88))] border border-white/10 flex items-center justify-center text-purple-200 shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
                     >
                       <Bot className="w-5 h-5 text-purple-300 animate-pulse" />
                     </motion.div>
@@ -214,7 +213,7 @@ export const MobileBottomNav: React.FC<Props> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-              className="relative w-full bg-gradient-to-b from-[#0e1324] via-[#090c17] to-[#05060d] border-t border-cyan-500/40 rounded-t-3xl p-5 shadow-[0_-15px_50px_rgba(0,0,0,0.9)] max-h-[88vh] overflow-y-auto text-white"
+              className="relative w-full bg-[linear-gradient(180deg,rgba(9,12,22,0.98),rgba(7,9,15,0.98))] border-t border-white/10 rounded-t-3xl p-5 shadow-[0_-12px_40px_rgba(0,0,0,0.44)] max-h-[88vh] overflow-y-auto text-white"
             >
               {/* Drag Handle Bar */}
               <div className="w-12 h-1.5 bg-slate-700/80 rounded-full mx-auto mb-4" />

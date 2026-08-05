@@ -103,78 +103,44 @@ class AuthService {
       return null;
     }
 
+    if (this.currentUser) {
+      return this.currentUser;
+    }
+
     try {
-      const { data: sessionData, error: sessionError } = await this.supabaseClient.auth.getSession();
-      console.log('Result of await supabase.auth.getSession():', { sessionData, sessionError });
-      if (sessionError || !sessionData || !sessionData.session || !sessionData.session.user) {
-        this.currentUser = null;
-        return null;
+      const { data: userData, error: userError } = await this.supabaseClient.auth.getUser();
+      if (userError || !userData?.user) {
+        const refreshResult = await this.supabaseClient.auth.refreshSession();
+        if (refreshResult.error || !refreshResult.data?.session?.user) {
+          await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
+          this.currentUser = null;
+          return null;
+        }
+
+        const refreshedUser = refreshResult.data.session.user;
+        if (!this.isConfirmedUser(refreshedUser)) {
+          await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
+          this.currentUser = null;
+          return null;
+        }
+
+        const authUser: AuthUser = {
+          id: refreshedUser.id,
+          email: refreshedUser.email || '',
+          hunterName: refreshedUser.user_metadata?.hunter_name || refreshedUser.email?.split('@')[0] || 'Hunter',
+          classTitle: refreshedUser.user_metadata?.class_title || 'Cyber Scholar',
+          createdAt: refreshedUser.created_at || new Date().toISOString(),
+        };
+
+        this.currentUser = authUser;
+        return authUser;
       }
 
-      if (this.isSessionExpired(sessionData.session)) {
-        await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
-        this.currentUser = null;
-        return null;
-      }
-
-      let user = sessionData.session.user;
-      let refreshedSession: Session | null = null;
-
+      const user = userData.user;
       if (!this.isConfirmedUser(user)) {
         await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
         this.currentUser = null;
         return null;
-      }
-
-      try {
-        const { data: userData, error: userError } = await this.supabaseClient.auth.getUser();
-        console.log('Result of await supabase.auth.getUser():', { userData, userError });
-
-        if (userError) {
-          const refreshResult = await this.supabaseClient.auth.refreshSession();
-          if (refreshResult.error || !refreshResult.data?.session?.user) {
-            await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
-            this.currentUser = null;
-            return null;
-          }
-          refreshedSession = refreshResult.data.session;
-          user = refreshedSession.user;
-        } else if (userData && userData.user) {
-          user = userData.user;
-        }
-
-        if (this.isSessionExpired(refreshedSession ?? sessionData.session)) {
-          await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
-          this.currentUser = null;
-          return null;
-        }
-        if (!this.isConfirmedUser(user)) {
-          await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
-          this.currentUser = null;
-          return null;
-        }
-      } catch (err) {
-        console.warn('supabase.auth.getUser() warning, attempting session refresh:', err);
-        try {
-          const refreshResult = await this.supabaseClient.auth.refreshSession();
-          if (refreshResult.error || !refreshResult.data?.session?.user) {
-            await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
-            this.currentUser = null;
-            return null;
-          }
-          refreshedSession = refreshResult.data.session;
-          user = refreshedSession.user;
-          if (!this.isConfirmedUser(user)) {
-            await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
-            this.currentUser = null;
-            return null;
-          }
-        } catch (refreshErr) {
-          console.error('Supabase session refresh failed:', refreshErr);
-          await this.supabaseClient.auth.signOut({ scope: 'global' }).catch(() => undefined);
-          this.currentUser = null;
-          return null;
-        }
       }
 
       const authUser: AuthUser = {

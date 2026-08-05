@@ -102,13 +102,13 @@ export const DashboardView: React.FC<Props> = React.memo(({
         ))}
       </AnimatePresence>
 
-      <div className="relative rounded-[24px] bg-[linear-gradient(180deg,rgba(8,13,22,0.98),rgba(6,10,18,0.92))] backdrop-blur-xl border border-white/10 p-4 md:p-6 lg:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.28)] overflow-hidden">
+      <div className="relative rounded-[28px] bg-[linear-gradient(180deg,rgba(8,12,21,0.98),rgba(8,10,18,0.94))] backdrop-blur-xl border border-white/8 p-4 md:p-6 lg:p-8 shadow-[0_18px_50px_rgba(0,0,0,0.28)] overflow-hidden">
         <div className="absolute -top-20 -right-20 w-72 h-72 bg-violet-900/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-cyan-900/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1.15fr_0.9fr_0.95fr] gap-4 md:gap-6 items-stretch">
-          <div className="space-y-3 rounded-2xl bg-white/[0.03] border border-white/10 p-4 md:p-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 text-[10px] font-mono font-bold uppercase tracking-[0.22em]">
+          <div className="space-y-3 rounded-2xl bg-white/[0.035] border border-white/8 p-4 md:p-5 shadow-[0_10px_25px_rgba(0,0,0,0.16)]">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-cyan-300 text-[10px] font-mono font-bold uppercase tracking-[0.22em] shadow-[0_6px_16px_rgba(0,0,0,0.18)]">
               <Shield className="w-3.5 h-3.5 text-cyan-400" />
               RANK: <span className="font-bold text-white">{user.rank}</span>
             </div>
@@ -130,7 +130,7 @@ export const DashboardView: React.FC<Props> = React.memo(({
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-5 rounded-2xl bg-white/[0.03] border border-white/10 p-4 md:p-5">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-5 rounded-2xl bg-white/[0.035] border border-white/8 p-4 md:p-5 shadow-[0_10px_25px_rgba(0,0,0,0.16)]">
             <div className="text-center">
               <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
                 <svg className="w-full h-full transform -rotate-90">
@@ -191,7 +191,7 @@ export const DashboardView: React.FC<Props> = React.memo(({
               className={`w-full p-4 rounded-2xl border transition-all duration-200 flex items-center justify-between ${
                 claimedReward
                   ? 'bg-slate-900/70 border-slate-800 text-slate-500 cursor-not-allowed'
-                  : 'bg-[linear-gradient(135deg,rgba(251,191,36,0.12),rgba(250,204,21,0.04))] border-amber-500/25 text-amber-300 hover:border-amber-400/45'
+                  : 'bg-[linear-gradient(135deg,rgba(251,191,36,0.12),rgba(250,204,21,0.05))] border-white/10 text-amber-300 hover:border-amber-400/35 shadow-[0_12px_30px_rgba(0,0,0,0.18)]'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -210,7 +210,7 @@ export const DashboardView: React.FC<Props> = React.memo(({
 
             <button
               onClick={onOpenCoach}
-              className="w-full p-3.5 rounded-2xl bg-[linear-gradient(135deg,rgba(91,33,182,0.22),rgba(30,41,59,0.72))] border border-violet-500/25 text-violet-100 hover:border-violet-400/40 transition flex items-center justify-between text-xs font-mono shadow-[0_8px_24px_rgba(91,33,182,0.12)] group"
+              className="w-full p-3.5 rounded-2xl bg-[linear-gradient(135deg,rgba(91,33,182,0.18),rgba(18,24,38,0.86))] border border-white/10 text-violet-100 hover:border-violet-400/30 transition-all duration-200 flex items-center justify-between text-xs font-mono shadow-[0_10px_24px_rgba(0,0,0,0.22)] group"
             >
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-lg bg-violet-500/14 text-violet-300 border border-violet-500/25 group-hover:scale-110 transition">
@@ -244,7 +244,7 @@ export const DashboardView: React.FC<Props> = React.memo(({
             </button>
           </div>
 
-          <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-3.5 md:p-4 flex items-center gap-4 backdrop-blur-sm">
+          <div className="rounded-2xl bg-white/[0.035] border border-white/8 p-3.5 md:p-4 flex items-center gap-4 backdrop-blur-sm shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
             <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-400 min-w-[72px]">
               Progress
             </div>

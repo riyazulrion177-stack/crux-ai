@@ -1,25 +1,26 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { UserProfile, Quest, BossState, ActivityLog, HunterClass, Routine, Weekday } from './types';
 import { storageService } from './services/storageService';
 import { audioService } from './services/audioService';
 import { authService, AuthUser } from './services/authService';
 import { Navbar } from './components/Navbar';
-import { AuthScreen } from './components/AuthScreen';
 import { CinematicRegistrationSequence } from './components/CinematicRegistrationSequence';
 import { CinematicBootSequence } from './components/CinematicBootSequence';
 import { MilestoneModal, MilestoneType } from './components/MilestoneModal';
-import { DashboardView } from './components/DashboardView';
-import { QuestsView } from './components/QuestsView';
-import { BossRaidView } from './components/BossRaidView';
-import { CharacterSheetView } from './components/CharacterSheetView';
-import { StatsAnalyticsView } from './components/StatsAnalyticsView';
-import { ShopEconomyView } from './components/ShopEconomyView';
-import { LeaderboardView } from './components/LeaderboardView';
-import { AICoachDrawer } from './components/AICoachDrawer';
-import { SupabaseModal } from './components/SupabaseModal';
 import { PromotionCeremonyModal } from './components/PromotionCeremonyModal';
 import { RankType } from './types';
+
+const AuthScreen = lazy(() => import('./components/AuthScreen').then((module) => ({ default: module.AuthScreen })));
+const DashboardView = lazy(() => import('./components/DashboardView').then((module) => ({ default: module.DashboardView })));
+const QuestsView = lazy(() => import('./components/QuestsView').then((module) => ({ default: module.QuestsView })));
+const BossRaidView = lazy(() => import('./components/BossRaidView').then((module) => ({ default: module.BossRaidView })));
+const CharacterSheetView = lazy(() => import('./components/CharacterSheetView').then((module) => ({ default: module.CharacterSheetView })));
+const StatsAnalyticsView = lazy(() => import('./components/StatsAnalyticsView').then((module) => ({ default: module.StatsAnalyticsView })));
+const ShopEconomyView = lazy(() => import('./components/ShopEconomyView').then((module) => ({ default: module.ShopEconomyView })));
+const LeaderboardView = lazy(() => import('./components/LeaderboardView').then((module) => ({ default: module.LeaderboardView })));
+const AICoachDrawer = lazy(() => import('./components/AICoachDrawer').then((module) => ({ default: module.AICoachDrawer })));
+const SupabaseModal = lazy(() => import('./components/SupabaseModal').then((module) => ({ default: module.SupabaseModal })));
 
 export default function App() {
   const [authLoading, setAuthLoading] = useState<boolean>(true);
@@ -31,7 +32,6 @@ export default function App() {
   const [boss, setBoss] = useState<BossState | null>(null);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
 
-  console.log("APP_RENDER", { authUser, user, pendingCinematicUser });
 
   // Major Milestone Modal state
   const [milestone, setMilestone] = useState<{
@@ -61,12 +61,6 @@ export default function App() {
 
   // Helper: Load account data isolated by userId
   const handleLoadUserAccount = useCallback(async (activeAuth: AuthUser, isNew: boolean, eventName?: string) => {
-    console.log("handleLoadUserAccount() called", {
-      "user id": activeAuth.id,
-      "email": activeAuth.email,
-      "event": eventName || "N/A"
-    });
-
     setAuthUser(activeAuth);
 
     let profile = storageService.getUserProfile(activeAuth.id);
@@ -97,10 +91,7 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
     let isInitCompleted = false;
-    console.log("App mounted.");
-
     const initAuth = async () => {
-      console.log("initAuth() started.");
       setAuthLoading(true);
       try {
         const active = await authService.getSessionUser();
@@ -113,7 +104,6 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.error("initAuth error:", err);
         if (isMounted) {
           setAuthUser(null);
           setUser(null);
@@ -130,8 +120,6 @@ export default function App() {
 
     const { data } = authService.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
-      console.log("Auth event:", event, session);
-
       if (event === 'SIGNED_OUT' || !session) {
         setAuthUser(null);
         setUser(null);
@@ -159,13 +147,11 @@ export default function App() {
   }, []);
 
   const handleAuthSuccess = useCallback(async (authenticatedUser: AuthUser, isNew: boolean) => {
-    console.log('handleAuthSuccess() called', { authenticatedUser, isNew });
     setIsAuthTransitioning(true);
 
     const sessionUser = await authService.getSessionUser();
     const activeUser = sessionUser || authenticatedUser;
     if (!activeUser || !activeUser.id) {
-      console.error('[AUTH_GUARD] Refusing authentication: No verified Supabase session found.');
       setAuthUser(null);
       setUser(null);
       setIsAuthTransitioning(false);
@@ -405,16 +391,19 @@ export default function App() {
   }, []);
 
   const handleOpenCoach = useCallback(() => {
-    console.log('[DRAWER_OPEN] App.handleOpenCoach called');
     setIsCoachOpen(true);
   }, []);
   const handleCloseCoach = useCallback(() => {
-    console.log('[DRAWER_CLOSE] App.handleCloseCoach called');
     setIsCoachOpen(false);
   }, []);
   const handleOpenSettings = useCallback(() => setIsSettingsOpen(true), []);
   const handleCloseSettings = useCallback(() => setIsSettingsOpen(false), []);
   const handleBootComplete = useCallback(() => setIsBooting(false), []);
+
+  const dashboardBoss = useMemo(() => {
+    if (boss) return boss;
+    return authUser ? storageService.getBossState(authUser.id) : null;
+  }, [boss, authUser]);
 
   // Render loading screen during initial authentication check
   if (authLoading || isAuthTransitioning) {
@@ -432,8 +421,11 @@ export default function App() {
 
   // If not authenticated, render Supabase Auth Screen
   if (!authUser) {
-    console.log("AUTH_SCREEN_RENDERED");
-    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-[#03060c] text-white flex items-center justify-center p-4"><div className="text-center font-mono"><div className="w-10 h-10 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="text-xs text-cyan-400 tracking-widest uppercase">LOADING AUTH SCREEN...</p></div></div>}>
+        <AuthScreen onAuthSuccess={handleAuthSuccess} />
+      </Suspense>
+    );
   }
 
   // First-time account created cinematic registration experience
@@ -474,14 +466,15 @@ export default function App() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.97, filter: 'blur(12px)' }}
+      initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
       animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-      transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-      className="h-full w-full bg-[#050505] text-[#e0e0e0] font-sans relative selection:bg-cyan-500/30 flex flex-col overflow-hidden"
+      transition={{ type: 'spring', stiffness: 220, damping: 24 }}
+      className="relative h-full w-full overflow-hidden bg-[linear-gradient(180deg,#05070d_0%,#070b13_100%)] text-[#e9eef7] selection:bg-cyan-500/25 flex flex-col"
     >
-      {/* Ambient Background Glows */}
-      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-900/15 blur-[140px] rounded-full pointer-events-none z-0" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-cyan-900/10 blur-[160px] rounded-full pointer-events-none z-0" />
+      <div className="pointer-events-none absolute inset-0 opacity-80">
+        <div className="absolute left-[-12%] top-[-10%] h-[380px] w-[380px] rounded-full bg-violet-500/8 blur-[110px]" />
+        <div className="absolute bottom-[-8%] right-[-10%] h-[340px] w-[340px] rounded-full bg-cyan-500/8 blur-[100px]" />
+      </div>
 
       {/* Navigation HUD */}
       <Navbar
@@ -496,76 +489,78 @@ export default function App() {
       />
 
       {/* Main Content Workspace */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-20 md:pb-6 relative z-10 overflow-y-auto min-h-0 scrollbar-thin">
-        {activeTab === 'dashboard' && (
-          <DashboardView
-            user={user}
-            quests={quests}
-            boss={boss || (authUser ? storageService.getBossState(authUser.id) : null)}
-            logs={logs}
-            onCompleteQuest={handleToggleQuest}
-            onNavigateTab={setActiveTab}
-            onOpenCoach={handleOpenCoach}
-            onClaimLoginReward={handleClaimLoginReward}
-          />
-        )}
+      <main className="relative z-10 flex-1 min-h-0 w-full max-w-7xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-20 md:pb-6 overflow-y-auto scrollbar-thin">
+        <Suspense fallback={<div className="h-full w-full flex items-center justify-center py-12 text-cyan-400 font-mono text-xs uppercase tracking-[0.3em]">Loading workspace...</div>}>
+          {activeTab === 'dashboard' && (
+            <DashboardView
+              user={user}
+              quests={quests}
+              boss={dashboardBoss}
+              logs={logs}
+              onCompleteQuest={handleToggleQuest}
+              onNavigateTab={setActiveTab}
+              onOpenCoach={handleOpenCoach}
+              onClaimLoginReward={handleClaimLoginReward}
+            />
+          )}
 
-        {activeTab === 'quests' && (
-          <QuestsView
-            quests={quests}
-            routines={routines}
-            userLevel={user.level}
-            onToggleQuest={handleToggleQuest}
-            onAddCustomQuestWithAI={handleAddCustomQuestWithAI}
-            onAddRoutine={handleAddRoutine}
-            onUpdateRoutine={handleUpdateRoutine}
-            onDeleteRoutine={handleDeleteRoutine}
-            onToggleRoutineEnabled={handleToggleRoutineEnabled}
-            onDuplicateRoutine={handleDuplicateRoutine}
-            onEditCustomQuest={handleEditCustomQuest}
-            onDeleteCustomQuest={handleDeleteCustomQuest}
-            onDuplicateCustomQuest={handleDuplicateCustomQuest}
-            onArchiveCustomQuest={handleArchiveCustomQuest}
-            onManualResetToday={handleManualResetToday}
-          />
-        )}
+          {activeTab === 'quests' && (
+            <QuestsView
+              quests={quests}
+              routines={routines}
+              userLevel={user.level}
+              onToggleQuest={handleToggleQuest}
+              onAddCustomQuestWithAI={handleAddCustomQuestWithAI}
+              onAddRoutine={handleAddRoutine}
+              onUpdateRoutine={handleUpdateRoutine}
+              onDeleteRoutine={handleDeleteRoutine}
+              onToggleRoutineEnabled={handleToggleRoutineEnabled}
+              onDuplicateRoutine={handleDuplicateRoutine}
+              onEditCustomQuest={handleEditCustomQuest}
+              onDeleteCustomQuest={handleDeleteCustomQuest}
+              onDuplicateCustomQuest={handleDuplicateCustomQuest}
+              onArchiveCustomQuest={handleArchiveCustomQuest}
+              onManualResetToday={handleManualResetToday}
+            />
+          )}
 
-        {activeTab === 'boss' && boss && (
-          <BossRaidView
-            boss={boss}
-            user={user}
-            onAttackBoss={handleAttackBoss}
-            onNavigateQuests={() => setActiveTab('quests')}
-          />
-        )}
+          {activeTab === 'boss' && boss && (
+            <BossRaidView
+              boss={boss}
+              user={user}
+              onAttackBoss={handleAttackBoss}
+              onNavigateQuests={() => setActiveTab('quests')}
+            />
+          )}
 
-        {activeTab === 'character' && (
-          <CharacterSheetView
-            user={user}
-            onSelectTitle={handleSelectTitle}
-          />
-        )}
+          {activeTab === 'character' && (
+            <CharacterSheetView
+              user={user}
+              onSelectTitle={handleSelectTitle}
+            />
+          )}
 
-        {activeTab === 'analytics' && (
-          <StatsAnalyticsView
-            user={user}
-            logs={logs}
-          />
-        )}
+          {activeTab === 'analytics' && (
+            <StatsAnalyticsView
+              user={user}
+              logs={logs}
+            />
+          )}
 
-        {activeTab === 'shop' && (
-          <ShopEconomyView
-            user={user}
-            onSpendCoins={handleSpendCoins}
-            onUnlockTitle={handleUnlockTitle}
-          />
-        )}
+          {activeTab === 'shop' && (
+            <ShopEconomyView
+              user={user}
+              onSpendCoins={handleSpendCoins}
+              onUnlockTitle={handleUnlockTitle}
+            />
+          )}
 
-        {activeTab === 'leaderboard' && (
-          <LeaderboardView
-            user={user}
-          />
-        )}
+          {activeTab === 'leaderboard' && (
+            <LeaderboardView
+              user={user}
+            />
+          )}
+        </Suspense>
       </main>
 
       {/* Major Milestone Modal (Only for Level Up, Rank Up, Boss Slay, 30/100 Day Streaks) */}
@@ -592,29 +587,33 @@ export default function App() {
       )}
 
       {/* Gemini AI Mentor Drawer */}
-      <AICoachDrawer
-        isOpen={isCoachOpen}
-        onClose={handleCloseCoach}
-        user={user}
-        logs={logs}
-        bossState={boss || undefined}
-        onAddSuggestedQuest={handleAddCustomQuest}
-      />
+      <Suspense fallback={null}>
+        <AICoachDrawer
+          isOpen={isCoachOpen}
+          onClose={handleCloseCoach}
+          user={user}
+          logs={logs}
+          bossState={boss || undefined}
+          onAddSuggestedQuest={handleAddCustomQuest}
+        />
+      </Suspense>
 
       {/* Settings / Supabase Modal */}
-      <SupabaseModal
-        isOpen={isSettingsOpen}
-        onClose={handleCloseSettings}
-        userId={authUser?.id}
-        onReloadState={() => {
-          if (authUser) {
-            setUser(storageService.getUserProfile(authUser.id));
-            setQuests(storageService.getQuests(authUser.id));
-            setBoss(storageService.getBossState(authUser.id));
-            setLogs(storageService.getActivityLogs(authUser.id));
-          }
-        }}
-      />
+      <Suspense fallback={null}>
+        <SupabaseModal
+          isOpen={isSettingsOpen}
+          onClose={handleCloseSettings}
+          userId={authUser?.id}
+          onReloadState={() => {
+            if (authUser) {
+              setUser(storageService.getUserProfile(authUser.id));
+              setQuests(storageService.getQuests(authUser.id));
+              setBoss(storageService.getBossState(authUser.id));
+              setLogs(storageService.getActivityLogs(authUser.id));
+            }
+          }}
+        />
+      </Suspense>
     </motion.div>
   );
 }
